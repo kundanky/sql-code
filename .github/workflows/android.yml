@@ -15,24 +15,19 @@ jobs:
           java-version: 21
 
       - run: npm install --legacy-peer-deps
-      
-      # Install Capacitor plugins and @capacitor/assets for icon generation
       - run: npm install --legacy-peer-deps @capacitor/core @capacitor/cli @capacitor/android @capacitor/filesystem @capacitor/share @capacitor/local-notifications @capacitor/status-bar @capacitor/splash-screen @capacitor/assets
-      
       - run: npm run build
-      
-      - name: Use a TypeScript version Capacitor understands
-        run: npm install --no-save --legacy-peer-deps typescript@5.6.3
+      - run: npm install --no-save --legacy-peer-deps typescript@5.6.3
         
       - name: Add Android platform
         run: |
           if [ ! -d android ]; then npx cap add android; fi
 
-      # Generates ALL app icons and native splash screens from your uploaded assets/icon.png
+      # 1. Generates ALL native Android app icons and native splash screens from your assets/icon.png
       - name: Generate App Icons and Splash
         run: npx @capacitor/assets generate --android
 
-      # Injects the pulsing animation into your web build using basic bash
+      # 2. Injects YOUR uploaded logo into the pulsing web animation
       - name: Inject Animated Splash into Web Build
         run: |
           HTML_FILE=""
@@ -41,7 +36,12 @@ jobs:
           if [ -f "build/index.html" ]; then HTML_FILE="build/index.html"; fi
           
           if [ -n "$HTML_FILE" ]; then
-            SPLASH='<div id="gh-splash" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000;z-index:9999;display:flex;justify-content:center;align-items:center;transition:opacity 0.5s ease-out;"><svg width="150" height="150" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" style="animation:ghPulse 1.5s infinite alternate;"><circle cx="512" cy="512" r="350" fill="#FFF" /><g transform="translate(512,512) rotate(45)"><rect x="-280" y="-70" width="560" height="140" fill="#000" rx="5"/><rect x="-70" y="-280" width="140" height="560" fill="#000" rx="5"/></g></svg></div><style>@keyframes ghPulse{from{transform:scale(0.9);opacity:0.8}to{transform:scale(1.1);opacity:1}}</style><script>window.addEventListener("load",()=>{setTimeout(()=>{const e=document.getElementById("gh-splash");if(e){e.style.opacity="0";setTimeout(()=>e.remove(),500)}},2000)})</script>'
+            # Convert your uploaded icon into a base64 string
+            ICON_BASE64=$(base64 -w 0 assets/icon.png)
+            
+            # The splash HTML uses your base64 image
+            SPLASH="<div id=\"gh-splash\" style=\"position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000;z-index:9999;display:flex;justify-content:center;align-items:center;transition:opacity 0.5s ease-out;\"><img src=\"data:image/png;base64,$ICON_BASE64\" style=\"width:150px;height:150px;animation:ghPulse 1.5s infinite alternate;\" /></div><style>@keyframes ghPulse{from{transform:scale(0.9);opacity:0.8}to{transform:scale(1.1);opacity:1}}</style><script>window.addEventListener(\"load\",()=>{setTimeout(()=>{const e=document.getElementById(\"gh-splash\");if(e){e.style.opacity=\"0\";setTimeout(()=>e.remove(),500)}},2000)})</script>"
+            
             sed -i "s|</body>|$SPLASH</body>|" "$HTML_FILE"
           fi
 
@@ -87,7 +87,6 @@ jobs:
           grep -q POST_NOTIFICATIONS android/app/src/main/AndroidManifest.xml || sed -i 's|<application|<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>\n    <application|' android/app/src/main/AndroidManifest.xml
       
       - run: npx cap sync android
-      
       - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
       
       - uses: actions/upload-artifact@v4
