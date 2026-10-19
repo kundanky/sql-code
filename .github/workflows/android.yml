@@ -16,6 +16,8 @@ jobs:
       - run: npm install --legacy-peer-deps
       - run: npm install --legacy-peer-deps @capacitor/core @capacitor/cli @capacitor/android @capacitor/filesystem @capacitor/share @capacitor/local-notifications @capacitor/status-bar
       - run: npm run build
+      - name: Use a TypeScript version Capacitor understands
+        run: npm install --no-save --legacy-peer-deps typescript@5.6.3
       - name: Add Android platform
         run: |
           if [ ! -d android ]; then npx cap add android; fi
