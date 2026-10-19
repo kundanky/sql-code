@@ -23,27 +23,40 @@ jobs:
         run: |
           if [ ! -d android ]; then npx cap add android; fi
 
-      # 1. Generates ALL native Android app icons and native splash screens from your assets/icon.png
+      # Generates ALL native Android app icons from your assets/icon.png
       - name: Generate App Icons and Splash
         run: npx @capacitor/assets generate --android
 
-      # 2. Injects YOUR uploaded logo into the pulsing web animation
+      # Uses Python to safely inject your Base64 image without hitting the OS text limit
       - name: Inject Animated Splash into Web Build
         run: |
-          HTML_FILE=""
-          if [ -f "dist/index.html" ]; then HTML_FILE="dist/index.html"; fi
-          if [ -f "www/index.html" ]; then HTML_FILE="www/index.html"; fi
-          if [ -f "build/index.html" ]; then HTML_FILE="build/index.html"; fi
-          
-          if [ -n "$HTML_FILE" ]; then
-            # Convert your uploaded icon into a base64 string
-            ICON_BASE64=$(base64 -w 0 assets/icon.png)
-            
-            # The splash HTML uses your base64 image
-            SPLASH="<div id=\"gh-splash\" style=\"position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000;z-index:9999;display:flex;justify-content:center;align-items:center;transition:opacity 0.5s ease-out;\"><img src=\"data:image/png;base64,$ICON_BASE64\" style=\"width:150px;height:150px;animation:ghPulse 1.5s infinite alternate;\" /></div><style>@keyframes ghPulse{from{transform:scale(0.9);opacity:0.8}to{transform:scale(1.1);opacity:1}}</style><script>window.addEventListener(\"load\",()=>{setTimeout(()=>{const e=document.getElementById(\"gh-splash\");if(e){e.style.opacity=\"0\";setTimeout(()=>e.remove(),500)}},2000)})</script>"
-            
-            sed -i "s|</body>|$SPLASH</body>|" "$HTML_FILE"
-          fi
+          cat << 'EOF' > inject-splash.py
+          import base64
+          import os
+
+          paths = ['dist/index.html', 'www/index.html', 'build/index.html']
+          target = next((p for p in paths if os.path.exists(p)), None)
+
+          if target:
+              with open('assets/icon.png', 'rb') as f:
+                  b64 = base64.b64encode(f.read()).decode('utf-8')
+                  
+              with open(target, 'r', encoding='utf-8') as f:
+                  html = f.read()
+                  
+              splash = '<div id="gh-splash" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000;z-index:9999;display:flex;justify-content:center;align-items:center;transition:opacity 0.5s ease-out;"><img src="data:image/png;base64,' + b64 + '" style="width:150px;height:150px;animation:ghPulse 1.5s infinite alternate;" /></div>'
+              splash += '<style>@keyframes ghPulse{from{transform:scale(0.9);opacity:0.8}to{transform:scale(1.1);opacity:1}}</style>'
+              splash += '<script>window.addEventListener("load",()=>{setTimeout(()=>{const e=document.getElementById("gh-splash");if(e){e.style.opacity="0";setTimeout(()=>e.remove(),500)}},2000)})</script>'
+              
+              html = html.replace('</body>', splash + '</body>')
+              
+              with open(target, 'w', encoding='utf-8') as f:
+                  f.write(html)
+              print('Splash injected successfully into ' + target)
+          else:
+              print('Could not find index.html')
+          EOF
+          python3 inject-splash.py
 
       - name: Fix status bar and gesture bar overlap
         run: |
