@@ -13,14 +13,104 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+
       - run: npm install --legacy-peer-deps
-      - run: npm install --legacy-peer-deps @capacitor/core @capacitor/cli @capacitor/android @capacitor/filesystem @capacitor/share @capacitor/local-notifications @capacitor/status-bar
+      
+      - run: npm install --legacy-peer-deps @capacitor/core @capacitor/cli @capacitor/android @capacitor/filesystem @capacitor/share @capacitor/local-notifications @capacitor/status-bar @capacitor/splash-screen @capacitor/assets sharp
+      
       - run: npm run build
+      
       - name: Use a TypeScript version Capacitor understands
         run: npm install --no-save --legacy-peer-deps typescript@5.6.3
+        
       - name: Add Android platform
         run: |
           if [ ! -d android ]; then npx cap add android; fi
+
+      # UPDATED: Now generates the exact White Circle + Black X from your image
+      - name: Generate Logo and Splash Assets
+        run: |
+          cat << 'EOF' > generate-assets.js
+          const sharp = require('sharp');
+          const fs = require('fs');
+          if (!fs.existsSync('assets')) fs.mkdirSync('assets');
+
+          // White circle with a black 'X' inside (matching your image)
+          const fgSvg = `
+          <svg width="1024" height="1024" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="512" cy="512" r="350" fill="#FFFFFF" />
+            <g transform="translate(512, 512) rotate(45)">
+              <rect x="-280" y="-70" width="560" height="140" fill="#000000" rx="5"/>
+              <rect x="-70" y="-280" width="140" height="560" fill="#000000" rx="5"/>
+            </g>
+          </svg>`;
+          
+          // Solid black background
+          const bgSvg = `<svg width="1024" height="1024" xmlns="http://www.w3.org/2000/svg"><rect width="1024" height="1024" fill="#000000"/></svg>`;
+          
+          // Native splash screen (Black bg, with the White Circle/Black X logo in the center)
+          const splashSvg = `
+          <svg width="2732" height="2732" xmlns="http://www.w3.org/2000/svg">
+            <rect width="2732" height="2732" fill="#000000"/>
+            <circle cx="1366" cy="1366" r="400" fill="#FFFFFF" />
+            <g transform="translate(1366, 1366) rotate(45)">
+              <rect x="-320" y="-80" width="640" height="160" fill="#000000" rx="5"/>
+              <rect x="-80" y="-320" width="160" height="640" fill="#000000" rx="5"/>
+            </g>
+          </svg>`;
+
+          Promise.all([
+            sharp(Buffer.from(fgSvg)).png().toFile('assets/icon-foreground.png'),
+            sharp(Buffer.from(bgSvg)).png().toFile('assets/icon-background.png'),
+            sharp(Buffer.from(bgSvg)).png().toFile('assets/icon-only.png'),
+            sharp(Buffer.from(splashSvg)).png().toFile('assets/splash.png'),
+            sharp(Buffer.from(splashSvg)).png().toFile('assets/splash-dark.png')
+          ]).then(() => console.log('Assets generated successfully'));
+          EOF
+          node generate-assets.js
+          npx @capacitor/assets generate --android
+
+      # UPDATED: Injects the exact Logo into the animated splash
+      - name: Inject Animated Splash into Web Build
+        run: |
+          cat << 'EOF' > inject-splash.js
+          const fs = require('fs');
+          let targetPath = null;
+          if (fs.existsSync('./dist/index.html')) targetPath = './dist/index.html';
+          else if (fs.existsSync('./www/index.html')) targetPath = './www/index.html';
+          else if (fs.existsSync('./build/index.html')) targetPath = './build/index.html';
+
+          if (targetPath) {
+            let html = fs.readFileSync(targetPath, 'utf8');
+            const splashHtml = `
+            <div id="gh-splash" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000000;z-index:99999;display:flex;justify-content:center;align-items:center;transition:opacity 0.5s ease-out;">
+              <svg width="200" height="200" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" style="animation: ghPulse 1.5s infinite alternate;">
+                <circle cx="512" cy="512" r="350" fill="#FFFFFF" />
+                <g transform="translate(512, 512) rotate(45)">
+                  <rect x="-280" y="-70" width="560" height="140" fill="#000000" rx="5"/>
+                  <rect x="-70" y="-280" width="140" height="560" fill="#000000" rx="5"/>
+                </g>
+              </svg>
+            </div>
+            <style>@keyframes ghPulse { from { transform: scale(0.9); opacity: 0.8; } to { transform: scale(1.1); opacity: 1; } }</style>
+            <script>
+              window.addEventListener('load', () => {
+                setTimeout(() => {
+                  const el = document.getElementById('gh-splash');
+                  if (el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 500); }
+                }, 2000);
+              });
+            </script>
+            `;
+            html = html.replace(/<body[^>]*>/, match => match + splashHtml);
+            fs.writeFileSync(targetPath, html);
+            console.log('Splash animation injected successfully into', targetPath);
+          } else {
+            console.log('Could not find index.html');
+          }
+          EOF
+          node inject-splash.js
+
       - name: Fix status bar and gesture bar overlap
         run: |
           F=$(find android/app/src/main/java -name MainActivity.java | head -n 1)
@@ -51,11 +141,21 @@ jobs:
             }
           }
           EOF
+
+      - name: Force Native Splash Screen Background to Black
+        run: |
+          mkdir -p android/app/src/main/res/values
+          echo '<?xml version="1.0" encoding="utf-8"?><resources><color name="splashBackground">#000000</color></resources>' > android/app/src/main/res/values/colors.xml
+          sed -i 's|<style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">|<style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">\n        <item name="windowSplashScreenBackground">@color/splashBackground</item>|' android/app/src/main/res/values/styles.xml
+
       - name: Add permissions
         run: |
           grep -q POST_NOTIFICATIONS android/app/src/main/AndroidManifest.xml || sed -i 's|<application|<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>\n    <application|' android/app/src/main/AndroidManifest.xml
+      
       - run: npx cap sync android
+      
       - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
+      
       - uses: actions/upload-artifact@v4
         with:
           name: app-debug
