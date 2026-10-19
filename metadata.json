@@ -1,0 +1,8 @@
+{
+  "name": "SQL CODE",
+  "description": "VS Code-style mobile IDE for SQL databases (PostgreSQL, MySQL, SQLite, Oracle, SQL Server, MariaDB, MongoDB) with schema explorer, query runner, Git version control, E2EE sync, and theme studio.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

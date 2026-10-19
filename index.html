@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>SQL CODE - Mobile SQL IDE</title>
+    <meta name="description" content="SQL CODE: Touch-first mobile database development environment, SQL editor, and local Git client." />
+    
+    <!-- PWA & Mobile Web App Meta Tags -->
+    <meta name="theme-color" content="#121212" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="SQL CODE" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-TileColor" content="#121212" />
+    <meta name="msapplication-tap-highlight" content="no" />
+
+    <!-- Open Graph & Twitter -->
+    <meta property="og:title" content="SQL CODE - Mobile SQL IDE" />
+    <meta property="og:description" content="Touch-first mobile database development environment, SQL editor, and local Git client." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Icons & Manifest -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/pwa-512x512.png" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+      /* Instant loading splash: pure #121212 dark, emerald accents, quick fade-in, no white */
+      #pwa-splash {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh;
+        background-color: #121212;
+        color: #f4f4f5;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        text-align: center;
+        user-select: none;
+        animation: splashFadeIn 0.25s ease-out forwards;
+      }
+      .splash-logo {
+        width: 76px;
+        height: 76px;
+        margin-bottom: 14px;
+      }
+      .splash-loader {
+        width: 120px;
+        height: 3px;
+        background: #1e1e1e;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 18px;
+        position: relative;
+      }
+      .splash-loader-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 45%;
+        background: #10b981;
+        border-radius: 4px;
+        animation: emeraldLoader 1.2s infinite ease-in-out;
+      }
+      @keyframes splashFadeIn {
+        from { opacity: 0; transform: scale(0.98); }
+        to { opacity: 1; transform: scale(1); }
+      }
+      @keyframes emeraldLoader {
+        0% { left: -45%; }
+        100% { left: 100%; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <!-- Native PWA Splash Screen displayed until React bundle executes -->
+      <div id="pwa-splash">
+        <svg class="splash-logo" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="512" height="512" rx="112" fill="#121212"/>
+          <g transform="translate(106, 106)">
+            <path d="M 15 65 C 15 25, 285 25, 285 65 L 285 105 C 285 145, 15 145, 15 105 Z" fill="#064e3b" stroke="#10b981" stroke-width="12" stroke-linejoin="round"/>
+            <ellipse cx="150" cy="65" rx="135" ry="40" fill="#10b981"/>
+            
+            <path d="M 15 125 C 15 165, 285 165, 285 125 L 285 185 C 285 225, 15 225, 15 185 Z" fill="#042f2e" stroke="#10b981" stroke-width="12" stroke-linejoin="round"/>
+            <path d="M 15 125 C 15 165, 285 165, 285 125" fill="none" stroke="#10b981" stroke-width="12" stroke-linecap="round"/>
+
+            <path d="M 15 185 C 15 225, 285 225, 285 185 L 285 235 C 285 275, 15 275, 15 235 Z" fill="#022c22" stroke="#10b981" stroke-width="12" stroke-linejoin="round"/>
+            <path d="M 15 185 C 15 225, 285 225, 285 185" fill="none" stroke="#10b981" stroke-width="12" stroke-linecap="round"/>
+
+            <path d="M 95 48 L 135 65 L 95 82" fill="none" stroke="#121212" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="150" y1="82" x2="195" y2="82" stroke="#121212" stroke-width="14" stroke-linecap="round"/>
+            
+            <g transform="translate(65, 150)">
+              <path d="M 30 20 L 5 45 L 30 70" fill="none" stroke="#10b981" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="75" y1="12" x2="95" y2="78" stroke="#34d399" stroke-width="11" stroke-linecap="round"/>
+              <path d="M 140 20 L 165 45 L 140 70" fill="none" stroke="#10b981" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+        </svg>
+        <div style="font-weight: 700; font-size: 20px; letter-spacing: -0.02em; color: #f4f4f5;">SQL CODE</div>
+        <div style="font-size: 12px; color: #10b981; margin-top: 4px; font-weight: 500;">Touch-First Mobile SQL IDE</div>
+        <div class="splash-loader">
+          <div class="splash-loader-bar"></div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

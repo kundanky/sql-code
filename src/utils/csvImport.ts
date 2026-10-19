@@ -1,0 +1,183 @@
+/**
+ * Parses raw CSV text into a 2D array of cells, handling quoted strings and delimiters.
+ */
+export function parseCsvRows(text: string, delimiter: string = ','): string[][] {
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentCell = '';
+  let insideQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const nextChar = text[i + 1];
+
+    if (char === '"') {
+      if (insideQuotes && nextChar === '"') {
+        // Escaped double quote
+        currentCell += '"';
+        i++;
+      } else {
+        // Toggle quote state
+        insideQuotes = !insideQuotes;
+      }
+    } else if (char === delimiter && !insideQuotes) {
+      currentRow.push(currentCell.trim());
+      currentCell = '';
+    } else if ((char === '\r' || char === '\n') && !insideQuotes) {
+      if (char === '\r' && nextChar === '\n') {
+        i++;
+      }
+      currentRow.push(currentCell.trim());
+      if (currentRow.some((c) => c.length > 0)) {
+        rows.push(currentRow);
+      }
+      currentRow = [];
+      currentCell = '';
+    } else {
+      currentCell += char;
+    }
+  }
+
+  // Push last cell & row if non-empty
+  if (currentCell.length > 0 || currentRow.length > 0) {
+    currentRow.push(currentCell.trim());
+    if (currentRow.some((c) => c.length > 0)) {
+      rows.push(currentRow);
+    }
+  }
+
+  return rows;
+}
+
+/**
+ * Autodetects the most likely delimiter from comma, semicolon, tab, or pipe.
+ */
+export function detectDelimiter(text: string): string {
+  const firstLine = text.split(/\r?\n/)[0] || '';
+  const counts: Record<string, number> = {
+    ',': (firstLine.match(/,/g) || []).length,
+    ';': (firstLine.match(/;/g) || []).length,
+    '\t': (firstLine.match(/\t/g) || []).length,
+    '|': (firstLine.match(/\|/g) || []).length,
+  };
+
+  let best = ',';
+  let max = -1;
+  for (const [delim, count] of Object.entries(counts)) {
+    if (count > max) {
+      max = count;
+      best = delim;
+    }
+  }
+  return max > 0 ? best : ',';
+}
+
+/**
+ * Infers SQLite column types (INTEGER, REAL, TEXT) based on preview values.
+ */
+export function detectColumnTypes(
+  headers: string[],
+  rows: string[][]
+): Array<{ name: string; type: 'INTEGER' | 'REAL' | 'TEXT' }> {
+  return headers.map((rawHeader, colIdx) => {
+    // Sanitize column name for SQLite
+    let name = rawHeader.trim().replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
+    if (!name || /^[0-9]/.test(name)) {
+      name = `col_${colIdx + 1}`;
+    }
+
+    let isInteger = true;
+    let isReal = true;
+    let sampleCount = 0;
+
+    for (let r = 0; r < Math.min(rows.length, 100); r++) {
+      const val = rows[r][colIdx];
+      if (val === undefined || val === '' || val === null) continue;
+      sampleCount++;
+
+      // Check Integer
+      if (!/^-?\d+$/.test(val)) {
+        isInteger = false;
+      }
+      // Check Float/Real
+      if (!/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(val)) {
+        isReal = false;
+      }
+    }
+
+    let type: 'INTEGER' | 'REAL' | 'TEXT' = 'TEXT';
+    if (sampleCount > 0) {
+      if (isInteger) type = 'INTEGER';
+      else if (isReal) type = 'REAL';
+    }
+
+    return { name, type };
+  });
+}
+
+/**
+ * Generates SQL script to CREATE TABLE and INSERT rows from parsed CSV data.
+ */
+export function generateCsvImportSql(
+  tableName: string,
+  columns: Array<{ name: string; type: string }>,
+  rows: string[][],
+  options: { createNewTable: boolean }
+): string {
+  const cleanTable = tableName.trim().replace(/[^a-zA-Z0-9_]/g, '_');
+  const statements: string[] = ['BEGIN TRANSACTION;'];
+
+  if (options.createNewTable) {
+    const colDefs = columns
+      .map((c) => `"${c.name}" ${c.type}`)
+      .join(', ');
+    statements.push(`CREATE TABLE IF NOT EXISTS "${cleanTable}" (${colDefs});`);
+  }
+
+  const colList = columns.map((c) => `"${c.name}"`).join(', ');
+
+  // Generate batch inserts (chunked by 50 to avoid SQLite statement length limit)
+  for (const row of rows) {
+    const valList = columns.map((c, idx) => {
+      const raw = row[idx];
+      if (raw === undefined || raw === '' || raw === null) return 'NULL';
+      if (c.type === 'INTEGER' || c.type === 'REAL') {
+        const num = Number(raw);
+        return isNaN(num) ? `'${raw.replace(/'/g, "''")}'` : String(num);
+      }
+      return `'${raw.replace(/'/g, "''")}'`;
+    }).join(', ');
+
+    statements.push(`INSERT INTO "${cleanTable}" (${colList}) VALUES (${valList});`);
+  }
+
+  statements.push('COMMIT;');
+  return statements.join('\n');
+}
+
+/**
+ * Generates SQL INSERT statements for exporting query results or tables.
+ */
+export function exportToSqlInserts(
+  tableName: string,
+  columns: string[],
+  rows: Record<string, any>[]
+): string {
+  const cleanTable = tableName.trim().replace(/[^a-zA-Z0-9_]/g, '_') || 'exported_data';
+  const colList = columns.map((c) => `"${c}"`).join(', ');
+  const lines: string[] = [`-- SQL INSERT statements generated by SQL CODE`, 'BEGIN TRANSACTION;'];
+
+  for (const row of rows) {
+    const vals = columns.map((col) => {
+      const val = row[col];
+      if (val === null || val === undefined) return 'NULL';
+      if (typeof val === 'number') return String(val);
+      if (typeof val === 'boolean') return val ? '1' : '0';
+      return `'${String(val).replace(/'/g, "''")}'`;
+    });
+    lines.push(`INSERT INTO "${cleanTable}" (${colList}) VALUES (${vals.join(', ')});`);
+  }
+
+  lines.push('COMMIT;');
+  return lines.join('\n');
+}

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="112" fill="#121212"/>
+  <g transform="translate(106, 106)">
+    <!-- Flat Database Cylinder Layers in Emerald #10b981 -->
+    <!-- Top Cylinder Cap -->
+    <path d="M 15 65 C 15 25, 285 25, 285 65 L 285 105 C 285 145, 15 145, 15 105 Z" fill="#064e3b" stroke="#10b981" stroke-width="12" stroke-linejoin="round"/>
+    <ellipse cx="150" cy="65" rx="135" ry="40" fill="#10b981"/>
+    
+    <!-- Middle Cylinder Body -->
+    <path d="M 15 125 C 15 165, 285 165, 285 125 L 285 185 C 285 225, 15 225, 15 185 Z" fill="#042f2e" stroke="#10b981" stroke-width="12" stroke-linejoin="round"/>
+    <path d="M 15 125 C 15 165, 285 165, 285 125" fill="none" stroke="#10b981" stroke-width="12" stroke-linecap="round"/>
+
+    <!-- Bottom Cylinder Body -->
+    <path d="M 15 185 C 15 225, 285 225, 285 185 L 285 235 C 285 275, 15 275, 15 235 Z" fill="#022c22" stroke="#10b981" stroke-width="12" stroke-linejoin="round"/>
+    <path d="M 15 185 C 15 225, 285 225, 285 185" fill="none" stroke="#10b981" stroke-width="12" stroke-linecap="round"/>
+
+    <!-- Sharp Code Glyph >_ on Top Cap / Center -->
+    <path d="M 95 48 L 135 65 L 95 82" fill="none" stroke="#121212" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="150" y1="82" x2="195" y2="82" stroke="#121212" stroke-width="14" stroke-linecap="round"/>
+    
+    <!-- Code Glyph </> on Main Cylinder Front -->
+    <g transform="translate(65, 150)">
+      <path d="M 30 20 L 5 45 L 30 70" fill="none" stroke="#10b981" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="75" y1="12" x2="95" y2="78" stroke="#34d399" stroke-width="11" stroke-linecap="round"/>
+      <path d="M 140 20 L 165 45 L 140 70" fill="none" stroke="#10b981" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+</svg>
